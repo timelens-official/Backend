@@ -11,7 +11,14 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "Accept"]
 }));
 
+app.options("*", cors());
+
 app.use(express.json({ limit: "10mb" }));
+
+app.use((req, res, next) => {
+  console.log(req.method + " " + req.url);
+  next();
+});
 
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   console.error("Missing FIREBASE_SERVICE_ACCOUNT");
@@ -43,6 +50,20 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     message: "Time Lens API is running"
+  });
+});
+
+app.get("/api/auth/send-reset-code", (req, res) => {
+  res.json({
+    success: false,
+    message: "Use POST method for send-reset-code"
+  });
+});
+
+app.get("/api/auth/reset-password", (req, res) => {
+  res.json({
+    success: false,
+    message: "Use POST method for reset-password"
   });
 });
 
@@ -98,33 +119,17 @@ app.post("/api/auth/send-reset-code", async (req, res) => {
 
           <div style="padding:35px;">
             <h2 style="color:#D4AF37;">Password Reset Code</h2>
-
             <p>Hello,</p>
-
             <p>We received a request to reset your Time Lens account password.</p>
-
             <p>Your verification code is:</p>
 
-            <div style="
-              background:#111827;
-              border:1px solid #D4AF37;
-              border-radius:12px;
-              padding:20px;
-              text-align:center;
-              margin:25px 0;
-            ">
-              <span style="
-                color:#D4AF37;
-                font-size:36px;
-                font-weight:bold;
-                letter-spacing:8px;
-              ">
+            <div style="background:#111827;border:1px solid #D4AF37;border-radius:12px;padding:20px;text-align:center;margin:25px 0;">
+              <span style="color:#D4AF37;font-size:36px;font-weight:bold;letter-spacing:8px;">
                 ${code}
               </span>
             </div>
 
             <p>This code will expire in <b>10 minutes</b>.</p>
-
             <p>If you did not request this, please ignore this email.</p>
 
             <hr style="border:none;border-top:1px solid #374151;margin:30px 0;">
@@ -146,6 +151,7 @@ app.post("/api/auth/send-reset-code", async (req, res) => {
 
   } catch (error) {
     console.error("send-reset-code error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message
@@ -214,11 +220,19 @@ app.post("/api/auth/reset-password", async (req, res) => {
 
   } catch (error) {
     console.error("reset-password error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message
     });
   }
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found: " + req.method + " " + req.url
+  });
 });
 
 const PORT = process.env.PORT || 3000;
