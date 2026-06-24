@@ -40,6 +40,9 @@ const db = admin.firestore();
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   auth: {
     user: process.env.SMTP_EMAIL,
     pass: process.env.SMTP_PASSWORD
@@ -53,26 +56,14 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/api/auth/send-reset-code", (req, res) => {
-  res.json({
-    success: false,
-    message: "Use POST method for send-reset-code"
-  });
-});
-
-app.get("/api/auth/reset-password", (req, res) => {
-  res.json({
-    success: false,
-    message: "Use POST method for reset-password"
-  });
-});
-
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 app.post("/api/auth/send-reset-code", async (req, res) => {
   try {
+    console.log("SEND RESET CODE START");
+
     const { email } = req.body;
 
     if (!email) {
@@ -84,10 +75,13 @@ app.post("/api/auth/send-reset-code", async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
+    console.log("Checking user:", cleanEmail);
+
     let user;
 
     try {
       user = await admin.auth().getUserByEmail(cleanEmail);
+      console.log("User found:", user.uid);
     } catch (e) {
       return res.status(404).json({
         success: false,
@@ -97,6 +91,8 @@ app.post("/api/auth/send-reset-code", async (req, res) => {
 
     const code = generateCode();
 
+    console.log("Generated code:", code);
+
     await db.collection("passwordResetCodes").doc(cleanEmail).set({
       email: cleanEmail,
       uid: user.uid,
@@ -104,6 +100,8 @@ app.post("/api/auth/send-reset-code", async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    console.log("Code saved in Firestore");
 
     await transporter.sendMail({
       from: `"Time Lens Team" <${process.env.SMTP_EMAIL}>`,
@@ -143,6 +141,8 @@ app.post("/api/auth/send-reset-code", async (req, res) => {
       </div>
       `
     });
+
+    console.log("Email sent successfully");
 
     return res.json({
       success: true,
